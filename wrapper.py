@@ -6,20 +6,29 @@ import sftphandle
 
 if __name__ == '__main__' :
 
+	# check if the config.json exists
+
 	config = json.load(open('config.json'))
 
 	handleLists = list()
 
 	for cont in config[u'containers'] :
 		if cont[u'type'] == 'dbx' :
-			handleLists.append(dbxhandle.DbxHandle(cont))
+			try :
+				handleLists.append(dbxhandle.DbxHandle(cont))
+			except :
+				pass
 		elif cont[u'type'] == 'sftp' :
-			handleLists.append(sftphandle.SftpHandle(cont))
+			try :
+				handleLists.append(sftphandle.SftpHandle(cont))
+			except :
+				pass
 
 
+	print handleLists
 
-	for handle in handleLists :
-		handle.retrieveHeirarchy()
+	# for handle in handleLists :
+	# 	handle.retrieveHeirarchy()
 
 
 

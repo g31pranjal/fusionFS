@@ -5,15 +5,14 @@ class SftpHandle :
 	def __init__(self, config) :
 		self.__native = config
 		try :
-			self.__connect = dropbox.Dropbox(config[u'auth'])
-			self.__user = self.__connect.users_get_current_account()
-			print("dbx:%s connected." % self.__native[u'name'])
-		except dropbox.exceptions.AuthError :
-			print("failed to establish connection.")
-			raise dropbox.exceptions.AuthError
+			cnopts = pysftp.CnOpts()
+			cnopts.hostkeys = None   
+			self.__connect = pysftp.Connection(host=self.__native[u'host'], \
+			username=self.__native[u'user'], password=self.__native[u'pass']\
+			, cnopts = cnopts )
+			print("[sftphandler] sftp:%s connected." % self.__native[u'name'])
 		except Exception :
-			print("error initializing the dbx handle.")
+			print("[sftphandler] error initializing the sftp handle.")
 			raise Exception
 
-		self.__housekeeping()
-		
+		# self.__housekeeping()

@@ -7,24 +7,18 @@ class DbxHandle :
 		try :
 			self.__connect = dropbox.Dropbox(config[u'auth'])
 			self.__user = self.__connect.users_get_current_account()
-			print("dbx:%s connected." % self.__native[u'name'])
+			print("[dbxhandle] dbx:%s connected." % self.__native[u'name'])
 		except dropbox.exceptions.AuthError :
-			print("failed to establish connection.")
+			print("[dbxhandle] failed to establish connection.")
 			raise dropbox.exceptions.AuthError
 		except Exception :
-			print("error initializing the dbx handle.")
+			print("[dbxhandle] error initializing the dbx handle.")
 			raise Exception
 
 		self.__housekeeping()
 
 
-	def __housekeeping(self) :
-		print self.__connect.files_search("", "fusion.marker", mode=dropbox.files.SearchMode('filename', None))
-
-	def getUserInfo(self) :
-		return self.__user
-		
-	def retrieveHeirarchy(self) :
+	def __retrieveHeirarchy(self) :
 
 		lst = list()
 
@@ -42,6 +36,20 @@ class DbxHandle :
 			for entry in req.entries :
 				print entry.path_display
 
-		return lst
+
+		
+
+	def __housekeeping(self) :
+		
+		marker_search = self.__connect.files_search("", "fusion.marker", mode=dropbox.files.SearchMode('filename', None))
+		if len(marker_search.matches) == 0 :
+			print("[dbxhandle] marker not found.")
+			raise Exception
+
+		
+
+	def getUserInfo(self) :
+		return self.__user
+
 		
 
