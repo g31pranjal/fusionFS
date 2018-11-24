@@ -1,173 +1,60 @@
-#!/usr/bin/env python
-
+import json
+import dbxhandle
+import gdrivehandle
+import sftphandle
 import os
-import sys
-import errno
-from fuse import FUSE, FuseOSError, Operations
 
 
-class fusionFS(Operations) :
+class FusionFS :
+
 
 	def __init__(self) :
-		pass
 
-# 	# Helpers
-# 	# =======
+		if not os.path.exists('./config.json') :
+			print("[fusion] cannot find config.json")
+			raise Exception("cannot start FUSE")
 
-# 	def _full_path(self, partial):
-# 		if partial.startswith("/"):
-# 			partial = partial[1:]
-# 		path = os.path.join(self.root, partial)
-# 		return path
+		config = json.load(open('config.json'))
 
-# 	# Filesystem methods
-# 	# ==================
+		self.__handleLists = list()
+		for cont in config[u'containers'] :
+			if cont[u'use'] == 1 :
+				if cont[u'type'] == 'dbx' :
+					try :
+						self.__handleLists.append(dbxhandle.DbxHandle(cont))
+					except :
+						pass
+				elif cont[u'type'] == 'sftp' :
+					try :
+						self.__handleLists.append(sftphandle.SftpHandle(cont))
+					except :
+						pass
 
-# 	def access(self, path, mode) :
-# 		print("method,access")
-# 		full_path = self._full_path(path)
-# 		if not os.access(full_path, mode):
-# 			raise FuseOSError(errno.EACCES)
-# 		else :
-# 			print(os.access(full_path, mode))
-
-# 	def chmod(self, path, mode):
-# 		print("method,chmod")
-# 		full_path = self._full_path(path)
-# 		return os.chmod(full_path, mode)
-
-# 	def chown(self, path, uid, gid):
-# 		print("method,chown")
-# 		full_path = self._full_path(path)
-# 		return os.chown(full_path, uid, gid)
-
-# 	def getattr(self, path, fh=None):
-# 		print("method,getattr -> %s" % (path))
-# 		full_path = self._full_path(path)
-# 		st = os.lstat(full_path)
-# 		a = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
-# 					 'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
-# 		print(a)
-# 		return a
-
-# 	def readdir(self, path, fh):
-# 		print("method,readdir -> %s" % (path) )
-# 		full_path = self._full_path(path)
-
-# 		dirents = ['.', '..']
-# 		if os.path.isdir(full_path):
-# 			dirents.extend(os.listdir(full_path))
-# 		for r in dirents:
-# 			print("readdir yeilding")
-# 			yield r
-
-# 	def readlink(self, path):
-# 		print("method,readlink")
-# 		pathname = os.readlink(self._full_path(path))
-# 		if pathname.startswith("/"):
-# 			# Path name is absolute, sanitize it.
-# 			return os.path.relpath(pathname, self.root)
-# 		else:
-# 			return pathname
-
-# 	def mknod(self, path, mode, dev):
-# 		print("method,mknod")
-# 		return os.mknod(self._full_path(path), mode, dev)
-
-# 	def rmdir(self, path):
-# 		print("method,rmdir")
-# 		full_path = self._full_path(path)
-# 		return os.rmdir(full_path)
-
-# 	def mkdir(self, path, mode):
-# 		print("method,mkdir")
-# 		return os.mkdir(self._full_path(path), mode)
-
-# 	def statfs(self, path):
-# 		print("method,statfs")
-# 		full_path = self._full_path(path)
-# 		stv = os.statvfs(full_path)
-# 		return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
-# 			'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
-# 			'f_frsize', 'f_namemax'))
-
-# 	def unlink(self, path):
-# 		print("method,unlink")
-# 		return os.unlink(self._full_path(path))
-
-# 	def symlink(self, name, target):
-# 		print("method,symlink")
-# 		return os.symlink(name, self._full_path(target))
-
-# 	def rename(self, old, new):
-# 		print("method,rename")
-# 		return os.rename(self._full_path(old), self._full_path(new))
-
-# 	def link(self, target, name):
-# 		print("method,link")
-# 		return os.link(self._full_path(target), self._full_path(name))
-
-# 	def utimens(self, path, times=None):
-# 		print("method,utimens")
-# 		return os.utime(self._full_path(path), times)
-
-	# File methods
-	# ============
-
-	# def open(self, path, flags):
-	# 	print("method,open")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, flags)
-
-	# def create(self, path, mode, fi=None):
-	# 	print("method,create")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
-
-	# def read(self, path, length, offset, fh):
-	# 	print("method,read")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.read(fh, length)
-
-	# def write(self, path, buf, offset, fh):
-	# 	print("method,write")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.write(fh, buf)
-
-	# def truncate(self, path, length, fh=None):
-	# 	print("method,truncate")
-	# 	full_path = self._full_path(path)
-	# 	with open(full_path, 'r+') as f:
-	# 		f.truncate(length)
-
-	# def flush(self, path, fh):
-	# 	print("method,flush")
-	# 	return os.fsync(fh)
-
-	# def release(self, path, fh):
-	# 	print("method,release")
-	# 	return os.close(fh)
-
-	# def fsync(self, path, fdatasync, fh):
-	# 	print("method,fsync")
-	# 	return self.flush(path, fh)
+		print("[fusion] total containers online : %d" % (len(self.__handleLists)))
 
 
-def main(mountpoint):
-	try :
-		FUSE(fusionFS(), mountpoint, nothreads=True, foreground=True)
-		print("[fusion] started FUSE instance at %s" % (mountpoint))
-	except Exception as e:
-		print("[fusion] faulted : %s" % str(e))
-		print("exiting.")
-		exit()
+	def readdir(self, path) :
+		lst = set()
+		for handle in self.__handleLists :
+			a = handle.readdir(path)
+			if(a != None) :
+				lst = lst.union( map(lambda x : str(x) , a))
+		return list(lst)
 
 
-if __name__ == '__main__':
 
-	mountpoint = "~/fused"
+	def getattr(self, path) :
+		lst = list()
+		for handle in self.__handleLists :
+			a = handle.getattr(path)
+			if a != None :
+				lst.append(a)
 
-	if not os.path.exists(path) :
-		os.mkdirs(mountpoint)
+		return lst[0]
 
-	main(mountpoint)
+
+	def isDir(self, path) :
+		return True
+
+
+
