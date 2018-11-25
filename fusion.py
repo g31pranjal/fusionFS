@@ -136,8 +136,6 @@ class FusionFS :
 
 
 	def mkdir(self, path, mode) :
-		print path
-		print self.__mirrors
 		if path in self.__explorer.keys() and self.__mirrors > 0 and \
 			len(self.__explorer[path]) >= self.__mirrors :
 			pass
@@ -148,7 +146,6 @@ class FusionFS :
 					excpt=list())
 			else :
 				sites = self.__getSites(num=self.__mirrors, excpt=list())
-				print "case of mkdir"
 			
 			for i in sites :
 				handle = self.__handleLists[i]
@@ -161,7 +158,20 @@ class FusionFS :
 			else :
 				self.__explorer[path] = newsites
 
-			
+	
+
+	def rmdir(self, path) :
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i] 
+				a = handle.rmdir(path)
+			del self.__explorer[path]
+		else :
+			for i, handle in enumerate(self.__handleLists) :
+				a = handle.rmdir(path)
+
+		
+
 
 	def isDir(self, path) :
 		return True

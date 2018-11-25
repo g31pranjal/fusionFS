@@ -74,10 +74,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 		print("method,mknod")
 # 		return os.mknod(self._full_path(path), mode, dev)
 
-# 	def rmdir(self, path):
-# 		print("method,rmdir")
-# 		full_path = self._full_path(path)
-# 		return os.rmdir(full_path)
+	def rmdir(self, path):
+		print("[interface] rmdir, path:%s" % (path) )
+		return self.__finstance.rmdir(path)
 
 	def mkdir(self, path, mode):
 		print("[interface] mkdir, path:%s" % (path) )

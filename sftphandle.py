@@ -88,6 +88,16 @@ class SftpHandle :
 			self.__connect.mkdir(path)
 
 
+	def rmdir(self, path) :
+		try :
+			abspath = self.__abspath(path)
+			self.__connect.rmdir(abspath)
+			return True
+		except :
+			print("[sftphandle @ %s] cannot remove directory" % (self.native[u'name']))
+			return None		
+
+
 	def destroy(self) :
 		self.__connect.close()
 		self.__client.close()
