@@ -1,9 +1,10 @@
-import json
-import dbxhandle
 import gdrivehandle
 import sftphandle
-import os
+import dbxhandle
 import errno
+import json
+import os
+import random
 
 class FusionFS :
 
@@ -30,8 +31,40 @@ class FusionFS :
 					except :
 						pass
 
+		if config[u'properties'][u'mirroring'] != 1 :
+			self.__mirrors = -1
+		else :
+			self.__mirrors = config[u'properties'][u'mirrors']
+		self.__logging = bool(config[u'properties'][u'logging'])
 		self.__explorer = dict()
+
 		print("[fusion] total containers online : %d" % (len(self.__handleLists)))
+
+
+
+	def __getSites(self, num = -1, excpt = list() ) :
+		if num == -1 :
+			num = self.__mirrors
+		assert(len(self.__handleLists)-len(excpt) >= num)
+		sites = list()
+		while(len(sites) != num) :
+			r = int(random.random()*(len(self.__handleLists)))
+			if r not in (excpt + sites) :
+				sites.append(r)
+		return sites
+
+
+
+	def getContainers(self) :
+		return map( lambda x : x.native[u'name'],self.__handleLists )
+
+
+	def getProperties(self) :
+		atr = dict()
+		atr['mirroring'] = True if self.__mirrors > 0 else False
+		atr['mirrors'] = self.__mirrors 
+		atr['logging'] = self.__logging
+		return atr
 
 
 	def readdir(self, path) :
@@ -97,15 +130,42 @@ class FusionFS :
 			for i, handle in enumerate(self.__handleLists) :
 				a = handle.rename(old, new)
 				if a != None :
-					res = a
 					sites.append(i)
 			self.__explorer[new] = sites
 
-		print self.__explorer[new]
 
+
+	def mkdir(self, path, mode) :
+		print path
+		print self.__mirrors
+		if path in self.__explorer.keys() and self.__mirrors > 0 and \
+			len(self.__explorer[path]) >= self.__mirrors :
+			pass
+		else :
+			newsites = list()
+			if path in self.__explorer.keys() :
+				sites = self.__getSites(num=self.__mirrors-len(self.__explorer[path]), \
+					excpt=list())
+			else :
+				sites = self.__getSites(num=self.__mirrors, excpt=list())
+				print "case of mkdir"
+			
+			for i in sites :
+				handle = self.__handleLists[i]
+				a = handle.mkdirrec(path, mode)
+				if a != None :
+					newsites.append(i)
+			
+			if path in self.__explorer.keys() :
+				self.__explorer[path] = self.__explorer[path] + newsites
+			else :
+				self.__explorer[path] = newsites
+
+			
 
 	def isDir(self, path) :
 		return True
 
 
+# fs = FusionFS()
 

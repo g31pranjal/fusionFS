@@ -5,6 +5,7 @@ import fusion
 # import sys
 # import errno
 import fuse
+import logging
 
 class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
@@ -78,9 +79,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 		full_path = self._full_path(path)
 # 		return os.rmdir(full_path)
 
-# 	def mkdir(self, path, mode):
-# 		print("method,mkdir")
-# 		return os.mkdir(self._full_path(path), mode)
+	def mkdir(self, path, mode):
+		print("[interface] mkdir, path:%s" % (path) )
+		return self.__finstance.mkdir(path, mode)
 
 # 	def statfs(self, path):
 # 		print("method,statfs")
@@ -154,6 +155,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 
 def main(mountpoint):
+	
+	logging.basicConfig(level=logging.WARNING)
+
 	try :
 		fuse.FUSE(fuse_interface(), mountpoint, nothreads=True, foreground=True)
 	except Exception as e:

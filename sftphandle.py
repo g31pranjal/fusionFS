@@ -70,13 +70,22 @@ class SftpHandle :
 		try :
 			abspathold = self.__abspath(old)
 			abspathnew = self.__abspath(new)
-			return self.__connect.rename(abspathold, abspathnew)
-			print "done"
+			self.__connect.rename(abspathold, abspathnew)
+			return True
 		except :
 			print("[sftphandle @ %s] cannot rename" % (self.native[u'name']))
-			return 0
+			return None
 
 
+	def mkdirrec(self, path, mode) :
+		abspath = self.__abspath(path)
+		print("[sftphandle @ %s] mkdirrec %s" % (self.native[u'name'], abspath))
+		try :
+			self.__connect.mkdir(abspath)
+			return True
+		except IOError :
+			self.mkdirrec(os.path.dirname(path), mode)
+			self.__connect.mkdir(path)
 
 
 	def destroy(self) :
