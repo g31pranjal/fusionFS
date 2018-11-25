@@ -4,10 +4,9 @@ import os
 import fusion
 # import sys
 # import errno
-from fuse import FUSE, FuseOSError, Operations
+import fuse
 
-
-class fuse_interface(Operations) :
+class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 	def __init__(self) :
 		self.__finstance = fusion.FusionFS();
@@ -26,15 +25,13 @@ class fuse_interface(Operations) :
 # 	# Filesystem methods
 # 	# ==================
 
-	# def access(self, path, mode) :
-	# 	print("method,access")
-	# 	# full_path = self._full_path(path)
-	# 	# if not os.access(full_path, mode):
-	# 	# 	raise FuseOSError(errno.EACCES)
-	# 	# else :
-	# 	# 	print(os.access(full_path, mode))
-
-	# 	return True
+	def access(self, path, mode) :
+		print("method,access")
+		# full_path = self._full_path(path)
+		# if not os.access(full_path, mode):
+		# 	raise FuseOSError(errno.EACCES)
+		# else :
+		# 	print(os.access(full_path, mode))
 
 
 # 	def chmod(self, path, mode):
@@ -47,19 +44,21 @@ class fuse_interface(Operations) :
 # 		full_path = self._full_path(path)
 # 		return os.chown(full_path, uid, gid)
 
+
 	def getattr(self, path, fh=None):
 		print("[interface] getattr, path -> %s" % (path))
 		return self.__finstance.getattr(path)
+
 		
 	def readdir(self, path, fh) :
 		print("[interface] readdir, path:%s" % (path) )
-
 		dirents = []
 		if self.__finstance.isDir(path) :
 			lst = self.__finstance.readdir(path)
 			dirents.extend(lst)
 		for r in dirents:
 			yield r
+
 
 # 	def readlink(self, path):
 # 		print("method,readlink")
@@ -99,9 +98,10 @@ class fuse_interface(Operations) :
 # 		print("method,symlink")
 # 		return os.symlink(name, self._full_path(target))
 
-# 	def rename(self, old, new):
-# 		print("method,rename")
-# 		return os.rename(self._full_path(old), self._full_path(new))
+	def rename(self, old, new):
+		print("[interface] rename, path:%s to path:%s" % (old, new) )
+		return self.__finstance.rename(old, new)
+
 
 # 	def link(self, target, name):
 # 		print("method,link")
@@ -155,7 +155,7 @@ class fuse_interface(Operations) :
 
 def main(mountpoint):
 	try :
-		FUSE(fuse_interface(), mountpoint, nothreads=True, foreground=True)
+		fuse.FUSE(fuse_interface(), mountpoint, nothreads=True, foreground=True)
 	except Exception as e:
 		print("[interface] faulted : %s" % str(e))
 		print("exiting.")

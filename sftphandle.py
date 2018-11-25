@@ -7,12 +7,12 @@ class SftpHandle :
 	def __init__(self, config) :
 		self.native = config
 		try :
-			client = paramiko.SSHClient()
-			client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-			client.load_system_host_keys()
-			client.connect(self.native[u'host'], port=22, username=self.native[u'user'], \
+			self.__client = paramiko.SSHClient()
+			self.__client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+			self.__client.load_system_host_keys()
+			self.__client.connect(self.native[u'host'], port=22, username=self.native[u'user'], \
 				password=self.native[u'pass'])
-			self.__connect = sftp = client.open_sftp()
+			self.__connect = sftp = self.__client.open_sftp()
 			print("[sftphandle @ %s] sftp:%s connected." % (self.native[u'name'], self.native[u'name']))
 		except Exception :
 			print("[sftphandle @ %s] error initializing the sftp handle." % (self.native[u'name']))
@@ -66,4 +66,19 @@ class SftpHandle :
 			return None
 
 
+	def rename(self, old, new) :
+		try :
+			abspathold = self.__abspath(old)
+			abspathnew = self.__abspath(new)
+			return self.__connect.rename(abspathold, abspathnew)
+			print "done"
+		except :
+			print("[sftphandle @ %s] cannot rename" % (self.native[u'name']))
+			return 0
 
+
+
+
+	def destroy(self) :
+		self.__connect.close()
+		self.__client.close()
