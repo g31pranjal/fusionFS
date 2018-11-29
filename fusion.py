@@ -73,18 +73,21 @@ class FusionFS :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i]
-				a = handle.readdir(path)
-				if(a != None) :
+				try :
+					a = handle.readdir(path)
 					lst = lst.union( map(lambda x : str(x) , a))
+				except :
+					print("[fusion] readdir failed at handle %d" % (i))
 		else :
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
-				a = handle.readdir(path)
-				if(a != None) :
+				try :
+					a = handle.readdir(path)
 					lst = lst.union( map(lambda x : str(x) , a))
 					sites.append(i)
+				except :
+					print("[fusion] readdir failed at handle %d" % (i))
 			self.__explorer[path] = sites
-			# print self.__explorer
 
 		return list(lst)
 
@@ -98,16 +101,20 @@ class FusionFS :
 			# print(self.__explorer[path])
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i] 
-				a = handle.getattr(path)
-				if a != None :
+				try :
+					a = handle.getattr(path)
 					lst.append(a)
+				except :
+					print("[fusion] getattr failed at handle %d" % (i))
 		else :
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
-				a = handle.getattr(path)
-				if a != None :
+				try :
+					a = handle.getattr(path)
 					sites.append(i)
 					lst.append(a)
+				except :
+					print("[fusion] getattr failed at handle %d" % (i))
 			self.__explorer[path] = sites
 			# print self.__explorer
 
@@ -118,6 +125,24 @@ class FusionFS :
 			raise OSError(errno.ENOENT, "No such file or directory", path)
 
 
+	def unlink(self, path) :
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i] 
+				try :
+					handle.unlink(path)
+				except :
+					print("[fusion] rename failed at handle %i" % (i))
+			del self.__explorer[path]
+		else :	
+			sites = list()
+			for i, handle in enumerate(self.__handleLists) :
+				try :
+					handle.unlink(path)
+					sites.append(i)
+				except :
+					print("[fusion] rename failed at handle %i" % (i))
+			
 
 	def rename(self, old, new) :
 		if old in self.__explorer.keys() :
@@ -210,7 +235,7 @@ class FusionFS :
 			for i, handle in enumerate(self.__handleLists) :
 				try :	
 					if flags == 0 :
-						a = handle.read(path, flags)
+						a = handle.open(path, flags)
 						return a
 					else :
 						print("[fusion] open in other than read flag not handled")

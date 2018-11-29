@@ -94,9 +94,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 			'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
 # 			'f_frsize', 'f_namemax'))
 
-# 	def unlink(self, path):
-# 		print("method,unlink")
-# 		return os.unlink(self._full_path(path))
+	def unlink(self, path):
+		print("[interface] unlink, path:%s" %(path))
+		return self.__finstance.unlink(path)
 
 # 	def symlink(self, name, target):
 # 		print("method,symlink")
@@ -141,18 +141,15 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 		return self.__finstance.write(path, buf, offset)
 
 	# def truncate(self, path, length, fh=None):
-	# 	print("method,truncate")
-	# 	full_path = self._full_path(path)
-	# 	with open(full_path, 'r+') as f:
-	# 		f.truncate(length)
+	# 	print("[interface] truncate, path:%s" % (path))
+	# 	self.__finstance.truncate(path, length)
 
 	# def flush(self, path, fh):
 	# 	print("method,flush")
 	# 	return os.fsync(fh)
 
-	# def release(self, path, fh):
-	# 	print("method,release")
-	# 	return os.close(fh)
+	def release(self, path, fh):
+		pass
 
 	# def fsync(self, path, fdatasync, fh):
 	# 	print("method,fsync")

@@ -43,27 +43,28 @@ class SftpHandle :
 
 	def readdir(self, path) :
 		abspath = self.__abspath(path)
-		try :
-			lst = self.__connect.listdir(self.__abspath(path))
-			lst = ['.', '..'] + lst
-			return lst
-		except :
-			print("[sftphandle @ %s] cannot list directory not found" % (self.native[u'name']))
-			return None
+		lst = self.__connect.listdir(self.__abspath(path))
+		lst = ['.', '..'] + lst
+		return lst
 
 
 	def getattr(self, path) :
-		try :
-			abspath = self.__abspath(path)
-			stats = self.__connect.lstat(abspath)
-			stats = dict((key, getattr(stats, key)) for key in \
-				( 'st_atime', 'st_mode', 'st_uid', 'st_gid', 'st_mtime', 'st_size'))
-			stats['st_uid'] = self.__localUser.pw_uid
-			stats['st_gid'] = self.__localUser.pw_gid
-			return stats
-		except :
-			print("[sftphandle @ %s] file not found" % (self.native[u'name']))
-			return None
+		abspath = self.__abspath(path)
+		stats = self.__connect.lstat(abspath)
+		stats = dict((key, getattr(stats, key)) for key in \
+			( 'st_atime', 'st_mode', 'st_uid', 'st_gid', 'st_mtime', 'st_size'))
+		stats['st_uid'] = self.__localUser.pw_uid
+		stats['st_gid'] = self.__localUser.pw_gid
+		return stats
+		# try :
+		# except :
+		# 	print("[sftphandle @ %s] file not found" % (self.native[u'name']))
+		# 	return None
+
+
+	def unlink(self, path) :
+		abspath = self.__abspath(path)
+		self.__connect.unlink(abspath)
 
 
 	def rename(self, old, new) :
@@ -117,7 +118,6 @@ class SftpHandle :
 		f.close()
 		print "written...."
 		return len(data)
-
 
 
 
