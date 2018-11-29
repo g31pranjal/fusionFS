@@ -111,9 +111,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 		print("method,link")
 # 		return os.link(self._full_path(target), self._full_path(name))
 
-# 	def utimens(self, path, times=None):
-# 		print("method,utimens")
-# 		return os.utime(self._full_path(path), times)
+	def utimens(self, path, times=None):
+		print("[interface] utimens, path:%s" % (path))
+		return self.__finstance.utimens(path, times)
 
 # File methods
 # ============

@@ -29,13 +29,32 @@ class logUnit :
 
 class versionControl :
 
-	def __init__(self, sftp) :
+	def __init__(self, sftp, drct) :
 		self.__log = list()
 		self.__logseq = 1
 		self.__connect = sftp
+		self.__dir = drct
+
+		try :
+			self.__connect.listdir(self.__dir)
+		except :
+			self.__connect.mkdir(self.__dir)
+
+		log_file_path = os.path.join(self.__dir, "log.seq")
+		try :
+			self.__connect.open(log_file_path, "r" )
+		except :
+			self.__connect.open(log_file_path, "w")
+		
+		log_dir_path = os.path.join(self.__dir, "log")
+		try :
+			self.__connect.listdir(log_dir_path)
+		except :
+			self.__connect.mkdir(log_dir_path)
+	
 
 	def __getLogStamp(self) :
-		a = self.__logseq
+		a = self.__logseq	
 		self.__logseq += 1
 		b = time.time()
 		return a, b
@@ -91,7 +110,7 @@ class SftpHandle :
 			raise Exception
 
 		self.__localUser = pwd.getpwnam('in-arena')
-		self.__log = versionControl(self.__connect)
+		self.__log = versionControl(self.__connect, self.__abspath(self.native['version_dir']))
 		
 
 
@@ -165,16 +184,21 @@ class SftpHandle :
 		self.__log.addAction(lu)
 
 
+	def utimens(self, path, times) :
+		abspath = self.__abspath(path)
+		self.__connect.utime(abspath, times)
+
+
 	def open(self, path) :
 		# mimicks system call open for only read flag
-		try :
-			abspath = self.__abspath(path)
-			a = self.__connect.open(abspath, "r")
-			a.close()
-			return True
-		except :
-			print("[sftphandle @ %s] cannot open file at %s" % (self.native[u'name'], path))
-			return None	
+		abspath = self.__abspath(path)
+		a = self.__connect.open(abspath, "r")
+		a.close()
+		return True
+		# try :
+		# except :
+		# 	print("[sftphandle @ %s] cannot open file at %s" % (self.native[u'name'], path))
+		# 	return None	
 
 
 	def create(self, path, mode) :

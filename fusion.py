@@ -19,6 +19,7 @@ class FusionFS :
 
 		self.__handleLists = list()
 		for cont in config[u'containers'] :
+			cont['version_dir'] = config[u'properties'][u'version_dir']
 			if cont[u'use'] == 1 :
 				if cont[u'type'] == 'dbx' :
 					try :
@@ -87,7 +88,9 @@ class FusionFS :
 					sites.append(i)
 				except :
 					print("[fusion] readdir failed at handle %d" % (i))
-			self.__explorer[path] = sites
+			
+			if len(sites) > 0 :
+				self.__explorer[path] = sites
 
 		return list(lst)
 
@@ -114,9 +117,10 @@ class FusionFS :
 					lst.append(a)
 				except :
 					print("[fusion] getattr failed at handle %d" % (i))
-			self.__explorer[path] = sites
-			# print self.__explorer
-
+			
+			if len(sites) > 0 :
+				self.__explorer[path] = sites
+			
 		if len(lst) != 0 :
 			return lst[0]
 		else :
@@ -162,7 +166,9 @@ class FusionFS :
 					sites.append(i)
 				except :
 					print("[fusion] rename failed at handle %i" % (i))
-			self.__explorer[new] = sites
+			
+			if len(sites) > 0 :
+				self.__explorer[new] = sites
 
 
 
@@ -215,6 +221,27 @@ class FusionFS :
 					print("[fusion] cannot remove directory at handle %d" % (self.native[u'name'], i))
 
 
+	def utimens(self, path, times) :
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i] 
+				try :
+					a = handle.utimens(path)
+				except : 
+					print("[fusion] cannot utime at handle %d" % (self.native[u'name'], i))
+
+		else :
+			sites = list()
+			for i, handle in enumerate(self.__handleLists) :
+				try :
+					a = handle.rmdir(path)
+					sites.append(i)
+				except : 
+					print("[fusion] cannot utime at handle %d" % (self.native[u'name'], i))
+
+			if len(sites) > 0 :
+				self.__explorer[path] = sites
+
 
 	def open(self, path, flags) :
 		flags = flags^(1<<15)
@@ -229,7 +256,7 @@ class FusionFS :
 					else : 
 						print("[fusion] open in other than read flag not handled")
 				except :
-					pass
+						print("[fusion] open failed at handle %d" % (i))
 		else :
 			for i, handle in enumerate(self.__handleLists) :
 				try :	
@@ -239,7 +266,7 @@ class FusionFS :
 					else :
 						print("[fusion] open in other than read flag not handled")
 				except :
-					pass
+						print("[fusion] open failed at handle %d" % (i))
 
 
 
