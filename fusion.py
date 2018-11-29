@@ -97,7 +97,6 @@ class FusionFS :
 
 		lst = list()
 		if path in self.__explorer.keys() :
-			# print("getting here")
 			# print(self.__explorer[path])
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i] 

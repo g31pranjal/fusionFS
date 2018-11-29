@@ -1,9 +1,74 @@
 import paramiko
 import pwd
 import os
+import time
+from enum import Enum
+
+
+class actions(Enum) :
+	MKDIR = 1<<0
+	RMDIR = 1<<1
+	RENAME = 1<<2
+
+
+class logUnit :
+	def __init__(self, action, preds) :
+		self.action = action
+		self.predicates = preds
+
+	def addLogStamp(self, seq, tm) :
+		self.seq = seq
+		self.time = time
+
+	def addPredicate(self, key, value) :
+		if key not in self.predicates.keys() :
+			self.predicates[key] = value
+		else :
+			print("[sftphandle] error in creating log unit, repeated predicate")
+
+
+class versionControl :
+
+	def __init__(self, sftp) :
+		self.__log = list()
+		self.__logseq = 1
+		self.__connect = sftp
+
+	def __getLogStamp(self) :
+		a = self.__logseq
+		self.__logseq += 1
+		b = time.time()
+		return a, b
+
+	def addAction(self, logunit) :
+		a, b = self.__getLogStamp()
+		logunit.addLogStamp(a, b)
+
+		self.__log.append(logunit)
+		self.prnt()
+
+		# if len(self.__log) > 5 :
+		# 	self.flushLogs()
+
+	def prnt(self) :
+		for entry in self.__log :
+			print(entry.seq)
+			print(entry.time)
+			print(entry.action)
+			print(entry.predicates)
+			print("===")
+
+	def flushLogs(self) :
+		# write mechanism 
+		pass
+
+
+
 
 class SftpHandle :
 
+
+	
 	def __init__(self, config) :
 		self.native = config
 		try :
@@ -26,6 +91,10 @@ class SftpHandle :
 			raise Exception
 
 		self.__localUser = pwd.getpwnam('in-arena')
+		self.__log = versionControl(self.__connect)
+		
+
+
 
 
 	def __abspath(self, path) :
@@ -49,7 +118,9 @@ class SftpHandle :
 
 
 	def getattr(self, path) :
+		print("sftp getatr")
 		abspath = self.__abspath(path)
+		print abspath
 		stats = self.__connect.lstat(abspath)
 		stats = dict((key, getattr(stats, key)) for key in \
 			( 'st_atime', 'st_mode', 'st_uid', 'st_gid', 'st_mtime', 'st_size'))
@@ -70,17 +141,28 @@ class SftpHandle :
 	def rename(self, old, new) :
 		abspathold = self.__abspath(old)
 		abspathnew = self.__abspath(new)
-		self.__connect.rename(abspathold, abspathnew)
+		self.__connect.rename(abspathold, abspathnew)		
+		try :
+			lu = logUnit(actions.RENAME, { 'old' : old, 'new' : new })
+			self.__log.addAction(lu)
+		except Exception as e :
+			print e
+			raise Exception
+
 	
 
 	def mkdir(self, path, mode) :
 		abspath = self.__abspath(path)
 		self.__connect.mkdir(abspath)
+		lu = logUnit(actions.MKDIR, { 'path' : path })
+		self.__log.addAction(lu)
 
 
 	def rmdir(self, path) :
 		abspath = self.__abspath(path)
 		self.__connect.rmdir(abspath)
+		lu = logUnit(actions.RMDIR, { 'path' : path })
+		self.__log.addAction(lu)
 
 
 	def open(self, path) :
