@@ -18,13 +18,17 @@ class logUnit :
 
 	def addLogStamp(self, seq, tm) :
 		self.seq = seq
-		self.time = time
+		self.time = tm
 
 	def addPredicate(self, key, value) :
 		if key not in self.predicates.keys() :
 			self.predicates[key] = value
 		else :
 			print("[sftphandle] error in creating log unit, repeated predicate")
+
+	def toString(self) :
+		a = (self.seq, self.time, self.action, self.predicates)
+		return str(a)
 
 
 class versionControl :
@@ -40,17 +44,17 @@ class versionControl :
 		except :
 			self.__connect.mkdir(self.__dir)
 
-		log_file_path = os.path.join(self.__dir, "log.seq")
+		self.__log_file_path = os.path.join(self.__dir, "log.seq")
 		try :
-			self.__connect.open(log_file_path, "r" )
+			self.__connect.open(self.__log_file_path, "r" )
 		except :
-			self.__connect.open(log_file_path, "w")
+			self.__connect.open(self.__log_file_path, "w")
 		
-		log_dir_path = os.path.join(self.__dir, "log")
+		self.__log_dir_path = os.path.join(self.__dir, "log")
 		try :
-			self.__connect.listdir(log_dir_path)
+			self.__connect.listdir(self.__log_dir_path)
 		except :
-			self.__connect.mkdir(log_dir_path)
+			self.__connect.mkdir(self.__log_dir_path)
 	
 
 	def __getLogStamp(self) :
@@ -65,27 +69,31 @@ class versionControl :
 
 		self.__log.append(logunit)
 		self.prnt()
+		self.flushLogs()
 
 		# if len(self.__log) > 5 :
 		# 	self.flushLogs()
 
 	def prnt(self) :
+		col = ""
 		for entry in self.__log :
-			print(entry.seq)
-			print(entry.time)
-			print(entry.action)
-			print(entry.predicates)
-			print("===")
+			col = entry.toString() + "\n"
+		print col
+		return col
 
 	def flushLogs(self) :
-		# write mechanism 
-		pass
+		try :
+			f = self.__connect.open(self.__log_file_path, "a")
+			f.write(self.prnt())
+			f.close()
+		except Exception as e:
+			print(e)
+			print("[fusion/version] cannot flush logs")
 
 
 
 
 class SftpHandle :
-
 
 	
 	def __init__(self, config) :
@@ -137,9 +145,9 @@ class SftpHandle :
 
 
 	def getattr(self, path) :
-		print("sftp getatr")
+		# print("sftp getatr")
 		abspath = self.__abspath(path)
-		print abspath
+		# print abspath
 		stats = self.__connect.lstat(abspath)
 		stats = dict((key, getattr(stats, key)) for key in \
 			( 'st_atime', 'st_mode', 'st_uid', 'st_gid', 'st_mtime', 'st_size'))
