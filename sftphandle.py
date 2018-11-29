@@ -77,15 +77,9 @@ class SftpHandle :
 			return None
 
 
-	def mkdirrec(self, path, mode) :
+	def mkdir(self, path, mode) :
 		abspath = self.__abspath(path)
-		print("[sftphandle @ %s] mkdirrec %s" % (self.native[u'name'], abspath))
-		try :
-			self.__connect.mkdir(abspath)
-			return True
-		except IOError :
-			self.mkdirrec(os.path.dirname(path), mode)
-			self.__connect.mkdir(path)
+		self.__connect.mkdir(abspath)
 
 
 	def rmdir(self, path) :
@@ -95,7 +89,25 @@ class SftpHandle :
 			return True
 		except :
 			print("[sftphandle @ %s] cannot remove directory" % (self.native[u'name']))
-			return None		
+			return None	
+
+
+	def open(self, path) :
+		# mimicks system call open for only read flag
+		try :
+			abspath = self.__abspath(path)
+			a = self.__connect.open(abspath, "r")
+			a.close()
+			return True
+		except :
+			print("[sftphandle @ %s] cannot open file at %s" % (self.native[u'name'], path))
+			return None	
+
+
+	def create(self, path, mode) :
+		abspath = self.__abspath(path)
+		a = self.__connect.open(abspath, "w")
+		a.close()
 
 
 	def destroy(self) :

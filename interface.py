@@ -10,6 +10,7 @@ import logging
 class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 	def __init__(self) :
+		self.__FD = 1
 		self.__finstance = fusion.FusionFS();
 		print("[interface] started FUSE instance at %s" % (mountpoint))
 		pass
@@ -48,7 +49,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 	def getattr(self, path, fh=None):
 		print("[interface] getattr, path -> %s" % (path))
-		return self.__finstance.getattr(path)
+		a = self.__finstance.getattr(path)
+		print a
+		return a
 
 		
 	def readdir(self, path, fh) :
@@ -57,6 +60,7 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 		if self.__finstance.isDir(path) :
 			lst = self.__finstance.readdir(path)
 			dirents.extend(lst)
+			print dirents
 		for r in dirents:
 			yield r
 
@@ -111,28 +115,30 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 		print("method,utimens")
 # 		return os.utime(self._full_path(path), times)
 
-	# File methods
-	# ============
+# File methods
+# ============
 
-	# def open(self, path, flags):
-	# 	print("method,open")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, flags)
+	def open(self, path, flags):
+		print("[interface] open, path:%s" % (path) )
+		self.__finstance.open(path, flags)
+		self.__FD += 1
+		return self.__FD
+		# return os.open(full_path, flags)
 
-	# def create(self, path, mode, fi=None):
-	# 	print("method,create")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
+	def create(self, path, mode, fi=None):
+		print("[interface] create, path:%s" % (path) )
+		self.__finstance.create(path, mode)
+		self.__FD += 1
+		return self.__FD
+		# return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
 
-	# def read(self, path, length, offset, fh):
-	# 	print("method,read")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.read(fh, length)
+	def read(self, path, length, offset, fh):
+		print("[interface] read, path:%s" % (path) )
+		return self.__finstance.read(path, length, offset)
 
-	# def write(self, path, buf, offset, fh):
-	# 	print("method,write")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.write(fh, buf)
+	def write(self, path, buf, offset, fh):
+		print("[interface] write, path:%s" % (path) )
+		return self.__finstance.write(path, buf, offset)
 
 	# def truncate(self, path, length, fh=None):
 	# 	print("method,truncate")
@@ -168,7 +174,7 @@ def main(mountpoint):
 if __name__ == '__main__':
 
 
-	mountpoint = "~/fuse"
+	mountpoint = "~/fused"
 
 	if not os.path.exists(mountpoint) :
 		os.makedirs(mountpoint)
