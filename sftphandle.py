@@ -67,15 +67,10 @@ class SftpHandle :
 
 
 	def rename(self, old, new) :
-		try :
-			abspathold = self.__abspath(old)
-			abspathnew = self.__abspath(new)
-			self.__connect.rename(abspathold, abspathnew)
-			return True
-		except :
-			print("[sftphandle @ %s] cannot rename" % (self.native[u'name']))
-			return None
-
+		abspathold = self.__abspath(old)
+		abspathnew = self.__abspath(new)
+		self.__connect.rename(abspathold, abspathnew)
+	
 
 	def mkdir(self, path, mode) :
 		abspath = self.__abspath(path)
@@ -83,13 +78,8 @@ class SftpHandle :
 
 
 	def rmdir(self, path) :
-		try :
-			abspath = self.__abspath(path)
-			self.__connect.rmdir(abspath)
-			return True
-		except :
-			print("[sftphandle @ %s] cannot remove directory" % (self.native[u'name']))
-			return None	
+		abspath = self.__abspath(path)
+		self.__connect.rmdir(abspath)
 
 
 	def open(self, path) :
@@ -108,6 +98,28 @@ class SftpHandle :
 		abspath = self.__abspath(path)
 		a = self.__connect.open(abspath, "w")
 		a.close()
+
+
+	def read(self, path, length, offset) :
+		abspath = self.__abspath(path)
+		f = self.__connect.open(abspath)
+		f.seek(offset, 0)
+		buf = f.read(length)
+		f.close()
+		print buf
+		return buf
+
+	def write(self, path, data, offset) :
+		abspath = self.__abspath(path)
+		f = self.__connect.open(abspath, 'r+')
+		f.seek(offset, 0)
+		f.write(data)
+		f.close()
+		print "written...."
+		return len(data)
+
+
+
 
 
 	def destroy(self) :

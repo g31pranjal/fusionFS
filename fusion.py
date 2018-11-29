@@ -94,8 +94,8 @@ class FusionFS :
 
 		lst = list()
 		if path in self.__explorer.keys() :
-			print("getting here")
-			print(self.__explorer[path])
+			# print("getting here")
+			# print(self.__explorer[path])
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i] 
 				a = handle.getattr(path)
@@ -123,31 +123,38 @@ class FusionFS :
 		if old in self.__explorer.keys() :
 			for i in self.__explorer[old] :
 				handle = self.__handleLists[i] 
-				a = handle.rename(old, new)
+				try :
+					a = handle.rename(old, new)
+				except :
+					print("[fusion] rename failed at handle %i" % (i))
 			tmp = self.__explorer[old]
 			del self.__explorer[old]
 			self.__explorer[new] = tmp
 		else :	
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
-				a = handle.rename(old, new)
-				if a != None :
+				try :
+					a = handle.rename(old, new)
 					sites.append(i)
+				except :
+					print("[fusion] rename failed at handle %i" % (i))
 			self.__explorer[new] = sites
 
 
 
-	def mkdir(self, path, mode) :
+	def mkdir(self, path, mode, sites=None) :
+		print path 
 		if path in self.__explorer.keys() and self.__mirrors > 0 and \
 			len(self.__explorer[path]) >= self.__mirrors :
 			pass
 		else :
 			newsites = list()
-			if path in self.__explorer.keys() :
-				sites = self.__getSites(num=self.__mirrors-len(self.__explorer[path]), \
-					excpt=list())
-			else :
-				sites = self.__getSites(num=self.__mirrors, excpt=list())
+			if not sites :
+				if path in self.__explorer.keys() :
+					sites = self.__getSites(num=self.__mirrors-len(self.__explorer[path]), \
+						excpt=list())
+				else :
+					sites = self.__getSites(num=self.__mirrors, excpt=list())
 			
 			for i in sites :
 				handle = self.__handleLists[i]
@@ -155,7 +162,7 @@ class FusionFS :
 					a = handle.mkdir(path, mode)
 					newsites.append(i)
 				except :
-					a = self.mkdir(os.path.dirname(path), mode)
+					self.mkdir(os.path.dirname(path), mode, [i,])
 					a = handle.mkdir(path, mode)
 					newsites.append(i)
 			
@@ -170,17 +177,24 @@ class FusionFS :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i] 
-				a = handle.rmdir(path)
+				try :
+					a = handle.rmdir(path)
+				except : 
+					print("[fusion] cannot remove directory at handle %d" % (self.native[u'name'], i))
+
 			del self.__explorer[path]
 		else :
 			for i, handle in enumerate(self.__handleLists) :
-				a = handle.rmdir(path)
+				try :
+					a = handle.rmdir(path)
+				except : 
+					print("[fusion] cannot remove directory at handle %d" % (self.native[u'name'], i))
 
 
 
 	def open(self, path, flags) :
 		flags = flags^(1<<15)
-		print flags
+		# print flags
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i]
@@ -225,13 +239,13 @@ class FusionFS :
 					newsites.append(i)
 				except IOError :
 					try :
-						self.mkdir(os.path.split(path)[0], 777)
+						self.mkdir(os.path.split(path)[0], 777, [i,])
 						a = handle.create(path, mode)
 						newsites.append(i)
 					except :
-						print("[fusion] create failed internal")
+						print("[fusion] create failed internal at handle %d" % (i))
 				except :
-					print("[fusion] create failed external")
+					print("[fusion] create failed external at handle %d" % (i))
 			
 			if path in self.__explorer.keys() :
 				self.__explorer[path] = self.__explorer[path] + newsites
@@ -240,22 +254,40 @@ class FusionFS :
 
 
 
-	# def read(self, path, length, offset) :
-	# 	if path in self.__explorer.keys() :
-	# 		for i in self.__explorer[path] :
-	# 			handle = self.__handleLists[i]
-	# 			try :	
-	# 				a = handle.read(path, length, offset)
-	# 				return a
-	# 			except :
-	# 				pass
-	# 	else :
-	# 		for i, handle in enumerate(self.__handleLists) :
-	# 			try :	
-	# 				a = handle.read(path, length, offset)
-	# 				return a
-	# 			except :
-	# 				pass
+	def read(self, path, length, offset) :
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i]
+				try :
+					a = handle.read(path, length, offset)
+					return a
+				except :
+					pass
+		else :
+			for i, handle in enumerate(self.__handleLists) :
+				try :	
+					a = handle.read(path, length, offset)
+					return a
+				except :
+					pass
+
+
+	def write(self, path, buf, offset) :
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i]
+				try :
+					a = handle.write(path, buf, offset)
+					return a
+				except :
+					pass
+		else :
+			for i, handle in enumerate(self.__handleLists) :
+				try :	
+					a = handle.write(path, buf, offset)
+					return a
+				except :
+					pass
 
 		
 
