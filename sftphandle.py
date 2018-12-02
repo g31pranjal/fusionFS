@@ -136,6 +136,10 @@ class SftpHandle :
 		return a
 
 
+	def chmod(self, path, mode) :
+		abspath = self.__abspath(path)
+		return self.__connect.chmod(self.__abspath(path), mode)
+		
 
 	def readdir(self, path) :
 		abspath = self.__abspath(path)
@@ -168,14 +172,14 @@ class SftpHandle :
 	def rename(self, old, new) :
 		abspathold = self.__abspath(old)
 		abspathnew = self.__abspath(new)
-		self.__connect.rename(abspathold, abspathnew)		
 		try :
-			lu = logUnit(actions.RENAME, { 'old' : old, 'new' : new })
-			self.__log.addAction(lu)
+			self.__connect.rename(abspathold, abspathnew)		
 		except Exception as e :
 			print e
 			raise Exception
-
+		lu = logUnit(actions.RENAME, { 'old' : old, 'new' : new })
+		self.__log.addAction(lu)
+	
 	
 
 	def mkdir(self, path, mode) :
@@ -221,7 +225,7 @@ class SftpHandle :
 		f.seek(offset, 0)
 		buf = f.read(length)
 		f.close()
-		print buf
+		print "reading..."
 		return buf
 
 	def write(self, path, data, offset) :
@@ -229,6 +233,7 @@ class SftpHandle :
 		f = self.__connect.open(abspath, 'r+')
 		f.seek(offset, 0)
 		f.write(data)
+		f.flush()
 		f.close()
 		print "written...."
 		return len(data)

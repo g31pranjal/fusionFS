@@ -68,6 +68,31 @@ class FusionFS :
 		return atr
 
 
+	def chmod(self, path, mode) :
+		print("chmoding")
+
+		if path in self.__explorer.keys() :
+			for i in self.__explorer[path] :
+				handle = self.__handleLists[i]
+				try :
+					a = handle.chmod(path, mode)
+				except :
+					print("[fusion] chmod failed at handle %d" % (i))
+		else :
+			sites = list()
+			for i, handle in enumerate(self.__handleLists) :
+				try :
+					handle.readdir(path)
+					sites.append(i)
+				except :
+					print("[fusion] chmod failed at handle %d" % (i))
+			
+			if len(sites) > 0 :
+				self.__explorer[path] = sites
+
+
+
+
 	def readdir(self, path) :
 
 		lst = set()
@@ -315,6 +340,7 @@ class FusionFS :
 				except :
 					pass
 		else :
+
 			for i, handle in enumerate(self.__handleLists) :
 				try :	
 					a = handle.read(path, length, offset)
@@ -329,16 +355,32 @@ class FusionFS :
 				handle = self.__handleLists[i]
 				try :
 					a = handle.write(path, buf, offset)
-					return a
 				except :
 					pass
+			return a
 		else :
-			for i, handle in enumerate(self.__handleLists) :
+			newsites = list()
+			if path in self.__explorer.keys() :
+				sites = self.__getSites(num=self.__mirrors-len(self.__explorer[path]), \
+					excpt=list())
+			else :
+				sites = self.__getSites(num=self.__mirrors, excpt=list())
+			
+			for i in sites :
+				handle = self.__handleLists[i]
 				try :	
 					a = handle.write(path, buf, offset)
-					return a
 				except :
 					pass
+
+			if path in self.__explorer.keys() :
+				self.__explorer[path] = self.__explorer[path] + newsites
+			else :
+				self.__explorer[path] = newsites
+
+			return a
+
+
 
 		
 
