@@ -12,6 +12,8 @@ class actions(Enum) :
 	RENAME = 1<<2
 	UPDATE = 1<<3
 	DEL = 1<<4
+	CREATE = 1<<5
+	WRITE = 1<<6
 
 
 class logUnit :
@@ -34,7 +36,7 @@ class logUnit :
 		return str(a)
 
 
-class versionControl :
+class logger :
 
 	def __init__(self, sftp, drct) :
 		self.__log = list()
@@ -91,16 +93,28 @@ class versionControl :
 			f.close()
 		except Exception as e:
 			print(e)
-			print("[fusion/version] cannot flush logs")
+			print("[sftphandle/version] cannot flush logs")
 
 	def logFile(self, abspath) :
 		newFile = os.path.join(self.__log_dir_path, getRandomAlphaNum())
-		print(newFile)
 		try :
 			self.__connect.rename(abspath, newFile)
 			return newFile
 		except :
-			print("[sftphandle] cannot log file from %s -> %s" % (abspath, newFile))
+			print("[sftphandle/version] cannot log file from %s -> %s" % (abspath, newFile))
+			return None
+
+	def storeDiff(self, data) :
+
+		newFile = os.path.join(self.__log_dir_path, getRandomAlphaNum())
+		try :
+			f = self.__connect.open(newFile, 'w')
+			f.write(data)
+			f.flush()
+			f.close()
+			return newFile
+		except :
+			print("[sftphandle/version] cannot write diff at " % (newFile))
 			return None
 
 
@@ -111,7 +125,6 @@ def getRandomAlphaNum() :
 
 class SftpHandle :
 
-	
 	def __init__(self, config) :
 		self.native = config
 		try :
@@ -134,10 +147,8 @@ class SftpHandle :
 			raise Exception
 
 		self.__localUser = pwd.getpwnam('in-arena')
-		self.__log = versionControl(self.__connect, self.__abspath(self.native['version_dir']))
+		self.__log = logger(self.__connect, self.__abspath(self.native['version_dir']))
 		
-
-
 
 
 	def __abspath(self, path) :
@@ -199,11 +210,10 @@ class SftpHandle :
 			print("newfile %s" % (newFile))
 			try :
 				self.__connect.rename(abspathold, abspathnew)		
+				lu = logUnit(actions.UPDATE, { 'path' : abspathnew, 'logged' : newFile })
+				self.__log.addAction(lu)
 			except Exception as e :
-				print e
 				raise Exception
-			lu = logUnit(actions.UPDATE, { 'path' : abspathnew, 'logged' : newFile })
-			self.__log.addAction(lu)
 		
 		except :
 			try :
@@ -247,6 +257,8 @@ class SftpHandle :
 		abspath = self.__abspath(path)
 		a = self.__connect.open(abspath, "w")
 		a.close()
+		lu = logUnit(actions.CREATE, { 'path' : abspath })
+		self.__log.addAction(lu)
 
 
 	def read(self, path, length, offset) :
@@ -265,9 +277,10 @@ class SftpHandle :
 		f.write(data)
 		f.flush()
 		f.close()
-		print "written...."
+		newFile = self.__log.storeDiff(data)
+		lu = logUnit(actions.WRITE, { 'path' : abspath, 'logged' : newFile, 'offset' : offset })
+		self.__log.addAction(lu)
 		return len(data)
-
 
 
 

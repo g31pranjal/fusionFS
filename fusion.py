@@ -259,7 +259,7 @@ class FusionFS :
 				try :
 					a = handle.utimens(path)
 				except : 
-					print("[fusion] cannot utime at handle %d" % (self.native[u'name'], i))
+					print("[fusion] cannot utime at handle %d" % (i))
 
 		else :
 			sites = list()
@@ -268,7 +268,7 @@ class FusionFS :
 					a = handle.rmdir(path)
 					sites.append(i)
 				except : 
-					print("[fusion] cannot utime at handle %d" % (self.native[u'name'], i))
+					print("[fusion] cannot utime at handle %d" % (i))
 
 			if len(sites) > 0 :
 				self.__explorer[path] = sites
