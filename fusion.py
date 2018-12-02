@@ -353,13 +353,15 @@ class FusionFS :
 
 	def write(self, path, buf, offset) :
 		if path in self.__explorer.keys() :
+			a = list()
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i]
 				try :
-					a = handle.write(path, buf, offset)
+					k = handle.write(path, buf, offset)
+					a.append(k)
 				except :
 					pass
-			return a
+			return a[0] if len(a) > 0 else -1
 		else :
 			newsites = list()
 			if path in self.__explorer.keys() :

@@ -34,12 +34,12 @@ class Passthrough(Operations):
 			print(os.access(full_path, mode))
 
 	def chmod(self, path, mode):
-		print("method,chmod")
+		print("method,chmod %d" % (mode))
 		full_path = self._full_path(path)
 		return os.chmod(full_path, mode)
 
 	def chown(self, path, uid, gid):
-		print("method,chown")
+		print("method,chown %d %d" % (uid, gid) )
 		full_path = self._full_path(path)
 		return os.chown(full_path, uid, gid)
 
@@ -79,19 +79,27 @@ class Passthrough(Operations):
 	def rmdir(self, path):
 		print("method,rmdir")
 		full_path = self._full_path(path)
-		return os.rmdir(full_path)
+		try :
+			os.rmdir(full_path)
+		except Exception as e :
+			print e.args
+		return a
 
 	def mkdir(self, path, mode):
 		print("method,mkdir")
+		print path
+		print mode
 		return os.mkdir(self._full_path(path), mode)
 
 	def statfs(self, path):
 		print("method,statfs")
 		full_path = self._full_path(path)
 		stv = os.statvfs(full_path)
-		return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
+		a = dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
 			'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
 			'f_frsize', 'f_namemax'))
+		print a
+		return a
 
 	def unlink(self, path):
 		print("method,unlink")
@@ -103,7 +111,7 @@ class Passthrough(Operations):
 
 	def rename(self, old, new):
 		print("method,rename")
-		return os.rename(self._full_path(old), self._full_path(new))
+		os.rename(self._full_path(old), self._full_path(new))
 
 	def link(self, target, name):
 		print("method,link")
@@ -118,11 +126,13 @@ class Passthrough(Operations):
 
 	def open(self, path, flags):
 		print("method,open")
+		print("path %s, flags %s" % (path, flags))
 		full_path = self._full_path(path)
 		return os.open(full_path, flags)
 
 	def create(self, path, mode, fi=None):
 		print("method,create")
+		print("path %s, mode %s" % (path, mode))
 		full_path = self._full_path(path)
 		return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
 
