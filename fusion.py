@@ -160,7 +160,7 @@ class FusionFS :
 				try :
 					handle.unlink(path)
 				except :
-					print("[fusion] rename failed at handle %i" % (i))
+					print("[fusion] unlink failed at handle %i" % (i))
 			del self.__explorer[path]
 		else :	
 			sites = list()
@@ -169,7 +169,7 @@ class FusionFS :
 					handle.unlink(path)
 					sites.append(i)
 				except :
-					print("[fusion] rename failed at handle %i" % (i))
+					print("[fusion] unlink failed at handle %i" % (i))
 			
 
 	def rename(self, old, new) :
@@ -234,16 +234,22 @@ class FusionFS :
 				handle = self.__handleLists[i] 
 				try :
 					a = handle.rmdir(path)
-				except : 
-					print("[fusion] cannot remove directory at handle %d" % (self.native[u'name'], i))
+				except IOError as e:
+					if e.args[0] == 'Failure' :
+						raise OSError(errno.ENOTEMPTY, os.strerror(39), path)
+					else :
+						print("[fusion] cannot remove directory at handle %d" % (i))
 
 			del self.__explorer[path]
 		else :
 			for i, handle in enumerate(self.__handleLists) :
 				try :
 					a = handle.rmdir(path)
-				except : 
-					print("[fusion] cannot remove directory at handle %d" % (self.native[u'name'], i))
+				except IOError as e:
+					if e.args[0] == 'Failure' :
+						raise OSError(errno.ENOTEMPTY, os.strerror(39), path)
+					else :
+						print("[fusion] cannot remove directory at handle %d" % (i))
 
 
 	def utimens(self, path, times) :
@@ -274,24 +280,20 @@ class FusionFS :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
 				handle = self.__handleLists[i]
-				try :
-					if flags == 0 :
-						a = handle.open(path, flags)
-						return a
-					else : 
-						print("[fusion] open in other than read flag not handled")
-				except :
-						print("[fusion] open failed at handle %d" % (i))
+				try :	
+					a = handle.open(path, flags)
+					return a
+				except Exception as e :
+					print(e)
+					print("[fusion] open failed at handle %d" % (i))
 		else :
 			for i, handle in enumerate(self.__handleLists) :
 				try :	
-					if flags == 0 :
-						a = handle.open(path, flags)
-						return a
-					else :
-						print("[fusion] open in other than read flag not handled")
-				except :
-						print("[fusion] open failed at handle %d" % (i))
+					a = handle.open(path, flags)
+					return a
+				except Exception as e :
+					print(e)
+					print("[fusion] open failed at handle %d" % (i))
 
 
 

@@ -3,12 +3,15 @@ import pwd
 import os
 import time
 from enum import Enum
+import random, string
 
 
 class actions(Enum) :
 	MKDIR = 1<<0
 	RMDIR = 1<<1
 	RENAME = 1<<2
+	UPDATE = 1<<3
+	DEL = 1<<4
 
 
 class logUnit :
@@ -90,7 +93,20 @@ class versionControl :
 			print(e)
 			print("[fusion/version] cannot flush logs")
 
+	def logFile(self, abspath) :
+		newFile = os.path.join(self.__log_dir_path, getRandomAlphaNum())
+		print(newFile)
+		try :
+			self.__connect.rename(abspath, newFile)
+			return newFile
+		except :
+			print("[sftphandle] cannot log file from %s -> %s" % (abspath, newFile))
+			return None
 
+
+def getRandomAlphaNum() :
+	return ''.join(random.choice(string.ascii_uppercase + \
+		string.ascii_lowercase + string.digits) for _ in range(16))
 
 
 class SftpHandle :
@@ -166,19 +182,37 @@ class SftpHandle :
 
 	def unlink(self, path) :
 		abspath = self.__abspath(path)
-		self.__connect.unlink(abspath)
+		newFile = self.__log.logFile(abspath)
+		lu = logUnit(actions.DEL, { 'path' : abspath, 'logged' : newFile })
+		self.__log.addAction(lu)
 
 
 	def rename(self, old, new) :
 		abspathold = self.__abspath(old)
 		abspathnew = self.__abspath(new)
+
 		try :
-			self.__connect.rename(abspathold, abspathnew)		
-		except Exception as e :
-			print e
-			raise Exception
-		lu = logUnit(actions.RENAME, { 'old' : old, 'new' : new })
-		self.__log.addAction(lu)
+			f = self.__connect.open(abspathnew)
+			f.close()
+			print("trying to update the file") 
+			newFile = self.__log.logFile(abspathnew)
+			print("newfile %s" % (newFile))
+			try :
+				self.__connect.rename(abspathold, abspathnew)		
+			except Exception as e :
+				print e
+				raise Exception
+			lu = logUnit(actions.UPDATE, { 'path' : abspathnew, 'logged' : newFile })
+			self.__log.addAction(lu)
+		
+		except :
+			try :
+				self.__connect.rename(abspathold, abspathnew)		
+			except Exception as e :
+				print e
+				raise Exception
+			lu = logUnit(actions.RENAME, { 'old' : old, 'new' : new })
+			self.__log.addAction(lu)
 	
 	
 
@@ -201,16 +235,12 @@ class SftpHandle :
 		self.__connect.utime(abspath, times)
 
 
-	def open(self, path) :
+	def open(self, path, flags) :
 		# mimicks system call open for only read flag
 		abspath = self.__abspath(path)
 		a = self.__connect.open(abspath, "r")
 		a.close()
 		return True
-		# try :
-		# except :
-		# 	print("[sftphandle @ %s] cannot open file at %s" % (self.native[u'name'], path))
-		# 	return None	
 
 
 	def create(self, path, mode) :

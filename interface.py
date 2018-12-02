@@ -27,7 +27,7 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 	# intercept owner change requests. 
 	def chown(self, path, uid, gid):
-		print("[interface] chown, path -> %s, mode %d" % (path, mode))
+		print("[interface] chown, path -> %s" % (path))
 
 
 	def getattr(self, path, fh=None):
