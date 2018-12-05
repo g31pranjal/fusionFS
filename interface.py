@@ -10,45 +10,31 @@ import logging
 class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 
 	def __init__(self) :
+		self.__FD = 1
 		self.__finstance = fusion.FusionFS();
 		print("[interface] started FUSE instance at %s" % (mountpoint))
 		pass
 
-# 	# Helpers
-# 	# =======
-
-# 	def _full_path(self, partial):
-# 		if partial.startswith("/"):
-# 			partial = partial[1:]
-# 		path = os.path.join(self.root, partial)
-# 		return path
-
-# 	# Filesystem methods
-# 	# ==================
 
 	def access(self, path, mode) :
-		print("method,access")
-		# full_path = self._full_path(path)
-		# if not os.access(full_path, mode):
-		# 	raise FuseOSError(errno.EACCES)
-		# else :
-		# 	print(os.access(full_path, mode))
+		print("[interface] access, path -> %s, mode %d" % (path, mode))
 
 
-# 	def chmod(self, path, mode):
-# 		print("method,chmod")
-# 		full_path = self._full_path(path)
-# 		return os.chmod(full_path, mode)
+	def chmod(self, path, mode):
+		print("[interface] chmod, path -> %s, mode %d" % (path, mode))
+		return self.__finstance.chmod(path, mode)
 
-# 	def chown(self, path, uid, gid):
-# 		print("method,chown")
-# 		full_path = self._full_path(path)
-# 		return os.chown(full_path, uid, gid)
+
+	# intercept owner change requests. 
+	def chown(self, path, uid, gid):
+		print("[interface] chown, path -> %s" % (path))
 
 
 	def getattr(self, path, fh=None):
 		print("[interface] getattr, path -> %s" % (path))
-		return self.__finstance.getattr(path)
+		a = self.__finstance.getattr(path)
+		print a
+		return a
 
 		
 	def readdir(self, path, fh) :
@@ -57,6 +43,7 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 		if self.__finstance.isDir(path) :
 			lst = self.__finstance.readdir(path)
 			dirents.extend(lst)
+			# print dirents
 		for r in dirents:
 			yield r
 
@@ -90,9 +77,9 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 			'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
 # 			'f_frsize', 'f_namemax'))
 
-# 	def unlink(self, path):
-# 		print("method,unlink")
-# 		return os.unlink(self._full_path(path))
+	def unlink(self, path):
+		print("[interface] unlink, path:%s" %(path))
+		return self.__finstance.unlink(path)
 
 # 	def symlink(self, name, target):
 # 		print("method,symlink")
@@ -107,51 +94,47 @@ class fuse_interface(fuse.LoggingMixIn, fuse.Operations) :
 # 		print("method,link")
 # 		return os.link(self._full_path(target), self._full_path(name))
 
-# 	def utimens(self, path, times=None):
-# 		print("method,utimens")
-# 		return os.utime(self._full_path(path), times)
+	def utimens(self, path, times=None):
+		print("[interface] utimens, path:%s" % (path))
+		return self.__finstance.utimens(path, times)
 
-	# File methods
-	# ============
+	def open(self, path, flags):
+		print("[interface] open, path:%s" % (path) )
+		self.__finstance.open(path, flags)
+		self.__FD += 1
+		return self.__FD
+		# return os.open(full_path, flags)
 
-	# def open(self, path, flags):
-	# 	print("method,open")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, flags)
+	def create(self, path, mode, fi=None):
+		print("[interface] create, path:%s" % (path) )
+		self.__finstance.create(path, mode)
+		self.__FD += 1
+		return self.__FD
+		# return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
 
-	# def create(self, path, mode, fi=None):
-	# 	print("method,create")
-	# 	full_path = self._full_path(path)
-	# 	return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
+	def read(self, path, length, offset, fh):
+		print("[interface] read, path:%s" % (path) )
+		return self.__finstance.read(path, length, offset)
 
-	# def read(self, path, length, offset, fh):
-	# 	print("method,read")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.read(fh, length)
-
-	# def write(self, path, buf, offset, fh):
-	# 	print("method,write")
-	# 	os.lseek(fh, offset, os.SEEK_SET)
-	# 	return os.write(fh, buf)
+	def write(self, path, buf, offset, fh):
+		print("[interface] write, path:%s" % (path) )
+		return self.__finstance.write(path, buf, offset)
 
 	# def truncate(self, path, length, fh=None):
-	# 	print("method,truncate")
-	# 	full_path = self._full_path(path)
-	# 	with open(full_path, 'r+') as f:
-	# 		f.truncate(length)
+	# 	print("[interface] truncate, path:%s" % (path))
+	# 	self.__finstance.truncate(path, length)
 
-	# def flush(self, path, fh):
-	# 	print("method,flush")
-	# 	return os.fsync(fh)
+	# no need for flushing, since every action on cotainer is discrete
+	def flush(self, path, fh):
+		pass
 
-	# def release(self, path, fh):
-	# 	print("method,release")
-	# 	return os.close(fh)
+	# no need of handle release
+	def release(self, path, fh):
+		pass
 
-	# def fsync(self, path, fdatasync, fh):
-	# 	print("method,fsync")
-	# 	return self.flush(path, fh)
-
+	# no need for flushing, since every action on cotainer is discrete
+	def fsync(self, path, fdatasync, fh):
+		pass
 
 def main(mountpoint):
 	
@@ -168,9 +151,10 @@ def main(mountpoint):
 if __name__ == '__main__':
 
 
-	mountpoint = "~/fuse"
+	mountpoint = "~/fused"
 
 	if not os.path.exists(mountpoint) :
 		os.makedirs(mountpoint)
 
 	main(mountpoint)
+
