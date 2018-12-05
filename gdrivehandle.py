@@ -6,6 +6,9 @@ from google.oauth2.credentials import Credentials
 from httplib2 import Http
 from oauth2client import file, client, tools
 import json
+import os
+import random
+import pwd
 
 # If modifying these scopes, delete the file token.json.
 SCOPES_READONLY = 'https://www.googleapis.com/auth/drive.metadata.readonly'
@@ -17,16 +20,23 @@ class GoogleDriveHandle:
 
 	def __init__(self, config):
 		self.__object       = {}
-		self.__native       = config
-		store               = file.Storage('token.json') 
+		self.native         = config
+		store               = file.Storage(config[u'tfile']) 
 		self.__credentials  = store.get()
-		self.__rootid       = None	
+		self.__rootid       = None
+		self.__reload       = False	
+		self.__localUser    = pwd.getpwnam('mk2sharm')
+		self.__counter      = 0
                 try:
 			if not self.__credentials or self.__credentials.invalid:
-				flow               = client.flow_from_clientsecrets('credentials.json', SCOPES_FULL)
+		                store               = file.Storage('token.json')
+		                self.__credentials  = store.get()
+				flow                = client.flow_from_clientsecrets(config[u'cfile'], SCOPES_FULL)
     		        	self.__credentials = tools.run_flow(flow, store)
                                 self.__refresh_token = self.__credentials.refresh_token
-				self.__connect = build('drive', 'v3', http=self.__credentials.authorize(Http()))			
+				self.__connect = build('drive', 'v3', http=self.__credentials.authorize(Http()), cache_discovery=False)			
+				os.rename('token.json', 'token-' + config[u'name']+'.json')  
+			        config[u'tfile'] = 'token-' + config[u'name']+'.json'		
 			else:
 				self.__refresh_token = self.__credentials.refresh_token
 				client_id 	     = self.__credentials.client_id
@@ -39,25 +49,197 @@ class GoogleDriveHandle:
 							token_uri     = token_url,
 							client_id     = client_id,
 							client_secret = client_secret)
-			        self.__connect = build('drive', 'v3', credentials = self.__credentials)	
+			        self.__connect = build('drive', 'v3', credentials = self.__credentials, cache_discovery=False)	
 			print("token established")
+                        if self.__reload is False:
+                                self.retrieveHierarchy()
+                                self.__reload = True
+				print("File list generated")
+
              	except Exception as ex:
-			print("Error initializing the google drive handle!!")
+			print("[gdrivehandle @ %s] Error initializing the google drive handle." % self.native[u'name'])
 			template = "Exception type {0} occurred. Arguments:\n{1!r}"
 			message  = template.format(type(ex).__name__, ex.args)
 			#print (message)
 			raise ex;	
 
+
+	def gdrivepath(self, path):
+		if len(path) == 1 and path == '/':
+			return 'ALL'
+		if '/'  == path[0]:
+			return path[1:]
+		elif '/' in path:
+			return path
+		else:
+			return path		
+
+	def readsubdir(self, path):
+		lst = []
+		sorted(self.__object)
+		temp_path = path + '/'
+		lst = list(self.__object.keys())
+		sorted(lst)
+		#print(lst)
+		ext_length = len(path) + 1	
+		nlst = []
+		print (temp_path)
+		for item in lst:
+			if temp_path in item:
+				#path_index = lst[index].find(temp_path) + 
+				#print("Hit found             %s" % item)
+				ext_path   = item
+				#print("ext_path:::%s " % ext_path)
+				#print("seatch_path :::%s" % ext_path[ext_length:])
+				if '/' not in ext_path[ext_length:]:
+					nlst.append(ext_path[ext_length:])
+		print ("READ SUBDIR" + path+"  ------------------%s" % nlst)	
+		return sorted(nlst)			
+					
+	def readdir(self, path):
+		try:
+			print("GDRIVE READDIR------------")
+			path = self.gdrivepath(path)
+			if self.__reload == False:
+				self.retrieveHierarchy()
+				self.__reload = True
+			if path is 'ALL':
+				lst = []	
+				for item in self.__object.keys():
+					if '/' not in item:	
+						lst.append(item)
+				return sorted(lst)
+			elif path in self.__object:
+				return self.readsubdir(path)
+			return None	
+		except KeyError:
+			print("[gdrivehandle @ %s] cannot list directory not found" % (self.native[u'name']))
+			return None 
+
+	def setattr(self, path):
+                        stats = {}
+			if self.__object[path][u'mimeType'] == FOLDER:
+	                        stats['st_mode']   = 16895  # folder+permissions
+			else:
+				stats['st_mode']   = 33277					
+
+                        stats['st_atime']  = 1543296474
+                        stats['st_uid']    = self.__localUser.pw_uid 
+                        stats['st_gid']    = self.__localUser.pw_gid
+			if 'size' in self.__object[path]:
+				stats['st_size'] = int(self.__object[path][u'size']) #4096
+			else:
+                        	stats['st_size']   = 4096 
+			stats['st_mtime']   = 1543296474 + random.randint(1,101)
+			#print ("RETURNED STATS________________----%s" % str(stats))
+                        return stats
+		
+
+        def getattr(self, path):
+		try:	
+			path = self.gdrivepath(path)
+			print("Path attributes %s" % path)
+			if self.__reload == False:
+                                self.retrieveHierarchy()
+                                self.__reload = True
+                        if path is 'ALL':
+				path = list(self.__object.keys())[0]
+                                return self.setattr(path)
+			else:
+				if path in self.__object:
+					return self.setattr(path)						
+			return None
+	
+		except KeyError:
+			print("[gdrivehandle @ %s] Directory/file not found" % (self.native[u'name']))
+                        return None
+			
+
+        def rename(self, old, new) :
+                try :
+			old = self.gdrivepath(old)
+			new = self.gdrivepath(new)
+			if old not in self.__object.keys():
+				print("Path invalid to be renamed")
+				return None
+			if new in self.__object.keys():
+				print("Destination file/directory alread present!");
+				return None
+			
+			new_name = self.getactualfilename(new)	
+			print("In Renaming file/folder Goolge Drive")
+			rename_file(self.__object[old][u'id'], new_name)  
+			# self.movefile(old, new)
+			old_details = self.__object[old]	
+			del self.__object[old]
+			self.__object[new] = old_details	
+			self.__reload = False
+			print("Renamed file/directory as %s " % new_name)
+                        return True
+                except Exception as ex:
+                        print("[gdrivehandle @ %s] cannot rename" % (self.native[u'name']))
+                        return False
+
+        def mkdirrec(self, path, mode) :
+                try :
+			path = self.gdrivepath(path)
+			print("MKDIR GDRIVE PATH %s" % path)
+                        temp = self.getactualfilename(path)
+			'''
+			if  'Untitled Folder' == temp:
+				temp = temp + ' (' + str(self.__counter) + ')'
+				print("Folder name cangesgsdvfs %s" % temp) 
+				self.__counter+=1
+				parent = self.getparent(path)
+				if parent is not None:
+					path   = parent + '/' + temp
+			'''
+			print("creating diragnfds")
+			self.mkdir(path)
+                        return True
+                except Exception as ex:
+			print("[gdrivehandle @ %s] Unable to create directory mkdirrec %s" % (self.native[u'name'], path))
+			return None
+
+        def rmdir(self, path) :
+                try :
+			path = self.gdrivepath(path)
+                        self.rmdir(path)
+                        return True
+                except :
+                        print("[gdrivehandle @ %s] cannot remove directory" % (self.native[u'name']))
+                        return False
+
+        def destroy(self) :
+                self.__object.clear()
+
+
+	def rename_file(file_id, new_title):
+		try:
+			
+		        file = {'name': new_title}
+		        updated_file = self.__connect.files().patch(
+		                fileId=file_id,
+		                body=file,
+		                fields='title').execute()
+		        return updated_file
+		except:
+		        print('An error occurred')
+		        return None
+				
 	def getCredentials(self, config):
 		try:
-	        	store               = file.Storage('token.json')
+	        	store               = file.Storage(config[u'tfile'])
         	        self.__credentials  = store.get()
                 
                         if not self.__credentials or self.__credentials.invalid:
-                                flow               = client.flow_from_clientsecrets('credentials.json', SCOPES_FULL)
+                                store               = file.Storage('token.json')
+                                self.__credentials  = store.get()
+                                flow               = client.flow_from_clientsecrets(config[u'cfile'], SCOPES_FULL)
                                 self.__credentials = tools.run_flow(flow, store)
                                 self.__refresh_token = self.__credentials.refresh_token
                                 self.__connect = build('drive', 'v3', http=self.__credentials.authorize(Http()))
+                                os.rename('token.json', 'token-' + config[u'name']+'.json')
                         else:
                                 self.__refresh_token = self.__credentials.refresh_token
                                 client_id            = self.__credentials.client_id
@@ -97,14 +279,16 @@ class GoogleDriveHandle:
                         q.append("mimeType %s '%s'" % ('=' if is_folder else '!=', FOLDER))
                 if parent is not None:
                         q.append("'%s' in parents" % parent.replace("'", "\\'"))
-                params = {'pageToken': None, 'orderBy': query, 'fields':"files(name, id, parents, mimeType, kind)"}
+                params = {'pageToken': None, 'orderBy': query, 'fields':"files(name, id, parents, mimeType, kind, size, modifiedTime)"}
                 if q:
                         params['q'] = ' and '.join(q)
 			#print(params)
                 while True:
                         response = self.__connect.files().list(**params).execute()
+			
 			#print (response)
                         for f in response['files']:
+				print(f)
 	                        yield f
                         try:
                             params['pageToken'] = response['nextPageToken']
@@ -130,13 +314,13 @@ class GoogleDriveHandle:
                         lst   = list()
                         while (more):
                                 if token == '':
-                                        list_result = self.__connect.files().list(pageSize=10, fields="nextPageToken, files(name, mimeType, kind, id, parents)", q=query).execute()
+                                        list_result = self.__connect.files().list(pageSize=10, fields="nextPageToken, files(name, mimeType, kind, id, parents, size, modifiedTime)", q=query).execute()
                                 else:
-                                        list_result = self.__connect.files().list(pageSize=1000, pageToken=token, fields="nextPageToken, files(name, mimeType, kind, id, parents)", q=query).execute()
+                                        list_result = self.__connect.files().list(pageSize=1000, pageToken=token, fields="nextPageToken, files(name, mimeType, kind, id, parents, size, modifiedTime)", q=query).execute()
                                 for filename in list_result['files']:
                                         if FOLDER  == filename[u'mimeType']:
                                                 folder_list.append(filename)
-						print(filename)
+						#print(filename)
                                         else:
                                                 file_list.append(filename)
                                 token = list_result.get('nextPageToken', None)
@@ -171,7 +355,7 @@ class GoogleDriveHandle:
 				self.__object[temp] = file
 				if 'parents' in file and self.__rootid is None:
 					self.__rootid = file[u'parents'][0]
-								
+
 			for folder in folder_list:
 				print ("folder--->%s" % folder[u'name'])
 				for path, root, dirs, files in self.scan(folder[u'name']):
@@ -257,47 +441,16 @@ class GoogleDriveHandle:
 			file = self.__connect.files().update(fileId=self.__object[filename][u'id'],
                 		                    addParents=new_parent,
                         		            removeParents=previous_parents,
-                                		    fields='name, kind, mimeType, id, parents').execute()
+                                		    fields='name, kind, mimeType, id, parents, size, modifiedTime').execute()
 			del self.__object[filename]		
 			self.__object[new_path] = file
 			print("File moved to new location %s" % new_path)
 		except Exception as ex:
 			self.HandleException(ex)
-	'''
-	def copyfile(self, filename, new_path):
-		try:
-                        if filename not in self.__object:
-                                print("source %s not present to be copied." % filename)
-				return
-                        if new_path in self.__object:
-                                print("destination %s is already present. unable to copy" % new_path)
-				return
-                        actual_name = self.getactualfilename(filename)
-                        parent      = self.getparent(new_path)
-                        if parent is None and '/' in new_path:
-                                print("Invalid path %s unable to copy" % parent)
-				return
-			if parent is not None:
-				parent_id   = self.__object[parent][u'id']
-				copied_file = { 'title': self.__object[parent][u'name'], 'parents': [parent]}
-				#copied_file['parents'] =  [parent_id]
-			else:
-				copied_file = { 'title': self.__object[parent][u'name'], 'parents':['root']} 
-				#copied_file['parents'] = ['root']
-
-			file =  self.__connect.files().copy(
-			        fileId=self.__object[filename][u'id'], body = copied_file,
-							fields='name, kind, mimeType, id, parents').execute()
-                        self.__object[new_path] = file
-			print("file copied %s" % new_path)
-                except Exception as ex:
-                        self.HandleException(ex)
-	'''
 	
 	def mkdir(self, gfilename, parent_id = None, mime_type = None):
 		try:
-			item = self.__object[gfilename]
-			if item:
+			if gfilename in self.__object:
 				print("Folder:%s already present, unable to create" % gfilename)
 				return;	
 		except KeyError: 
@@ -309,7 +462,7 @@ class GoogleDriveHandle:
 		}
 
 		if parent_id:
-			file_metadata['parents'] = [{'id': parent_id}]
+			file_metadata['parents'] = [parent_id]
 		elif '/' in gfilename:
 		        parent_path = self.getparent(gfilename)
 			try :
@@ -318,22 +471,30 @@ class GoogleDriveHandle:
 				print("Path invalid:%s. Unable to create folder" % item)
 				return
 			file_metadata['parents'] = [item[u'id']] # [{'id': item[u'id']}]
-	
+
+		print("MKDIR GDRIVE reached here----->%s" % gfilename) 	
 		file = self.__connect.files().create(body=file_metadata,
-               	                     fields='id, name, parents, kind, mimeType').execute()
+               	                     fields='id, name, parents, kind, mimeType, size').execute()
 		print ('Folder created: %s' % file.get('name'))
 		self.__object[gfilename] = file
 
 	def listdir(self, path):
 		try:
-			item = self.__object[path]
 			lspaths = []
+			if path is None:
+				for item in self.__object:
+					lspaths.append(item)
+				return  lspaths
+	
+			item = self.__object[path]
 			print("In list dir")	
+			print("[gdrivehandle @ %s] in list directory." % (self.native[u'name']))
 			for item in self.__object.keys():
 				if path in item:
 					lspaths.append(item)
 			return lspaths
 		except KeyError:
+			print("[gdrivehandle @ %s] cannot list. File/Directory not found" % (self.native[u'name']))
 			print("The given path:%s does not exists" % path)
 			return []
 
@@ -477,7 +638,7 @@ class GoogleDriveHandle:
 				filename = '/'.join(item)
 				item = self.__object[filename]
 				return filename
-			
+			return None
 		except KeyError:
 			return None
 
@@ -569,7 +730,7 @@ class GoogleDriveHandle:
 			print("Deleting finished");		
 		except Exception as ex:
 			self.HandleException(ex)	
-
+'''
 
 if __name__=='__main__':
 	try:
@@ -589,3 +750,34 @@ if __name__=='__main__':
 	        template = "Exception type {0} occurred. Arguments:\n{1!r}"
 	        message  = template.format(type(ex).__name__, ex.args)
 	        #print (message)
+
+
+        def copyfile(self, filename, new_path):
+                try:
+                        if filename not in self.__object:
+                                print("source %s not present to be copied." % filename)
+                                return
+                        if new_path in self.__object:
+                                print("destination %s is already present. unable to copy" % new_path)
+                                return
+                        actual_name = self.getactualfilename(filename)
+                        parent      = self.getparent(new_path)
+                        if parent is None and '/' in new_path:
+                                print("Invalid path %s unable to copy" % parent)
+                                return
+                        if parent is not None:
+                                parent_id   = self.__object[parent][u'id']
+                                copied_file = { 'title': self.__object[parent][u'name'], 'parents': [parent]}
+                                #copied_file['parents'] =  [parent_id]
+                        else:
+                                copied_file = { 'title': self.__object[parent][u'name'], 'parents':['root']} 
+                                #copied_file['parents'] = ['root']
+
+                        file =  self.__connect.files().copy(
+                                fileId=self.__object[filename][u'id'], body = copied_file,
+                                                        fields='name, kind, mimeType, id, parents').execute()
+                        self.__object[new_path] = file
+                        print("file copied %s" % new_path)
+                except Exception as ex:
+                        self.HandleException(ex)
+'''
