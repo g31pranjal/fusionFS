@@ -141,7 +141,7 @@ def main(mountpoint):
 	logging.basicConfig(level=logging.WARNING)
 
 	try :
-		fuse.FUSE(fuse_interface(), mountpoint, nothreads=True, foreground=True)
+		fuse.FUSE(fuse_interface(), mountpoint, nothreads=True, foreground=True, direct_io= True)
 	except Exception as e:
 		print("[interface] faulted : %s" % str(e))
 		print("exiting.")

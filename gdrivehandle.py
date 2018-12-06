@@ -730,17 +730,21 @@ class GoogleDriveHandle:
 			print("Deleting finished");		
 		except Exception as ex:
 			self.HandleException(ex)	
-'''
+
 
 if __name__=='__main__':
 	try:
         	config = json.load(open('config.json'))
 		container = config[u'containers']
-		g = GoogleDriveHandle(container[0]) 
+		for item in container:
+			if item[u'name'] == 'gdrive':
+				break;
+		
+		g = GoogleDriveHandle(item)  #container[0]) 
 		g.retrieveHierarchy();
 		g.printPaths();	
 		print("Get file")
-		g.getCredentials(config)
+		g.getCredentials(item) #config)
 		print("Credentials")
 		g.getmetas()
 		g.printPaths();	
@@ -751,7 +755,7 @@ if __name__=='__main__':
 	        message  = template.format(type(ex).__name__, ex.args)
 	        #print (message)
 
-
+'''
         def copyfile(self, filename, new_path):
                 try:
                         if filename not in self.__object:

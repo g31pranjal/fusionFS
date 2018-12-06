@@ -20,7 +20,7 @@ class DbxHandle :
 			print("[self.__connecthandle] error initializing the dbx handle.")
                         template = "Exception type {0} occurred. Arguments:\n{1!r}"
                         message  = template.format(type(ex).__name__, ex.args)
-                        #print (message)
+                        print (message)
                         raise ex;
 
                 self.__localUser = pwd.getpwnam('mk2sharm')
@@ -72,20 +72,20 @@ class DbxHandle :
                 try:
 			stats = {}
 			path  = self.abspath(path)
-			#print("dropbox getattr %s" % path)	
+			print("dropbox getattr %s" % path)	
 			if path != "":
 				meta = self.__connect.files_get_metadata(path)
 			if path == "":
-                                #print ("this is a folder")      
+                                print ("this is a folder")      
                                 stats['st_mode']   = 16895
                                 stats['size']      = 4096
 			
 			elif (isinstance(meta, dropbox.files.FileMetadata)):
-				#print("this is a file")
+				print("this is a file")
 				stats['st_mode']   = 33277
 				stats['size']	   = meta.size
 			elif (isinstance(meta, dropbox.files.FolderMetadata)):
-				#print ("this is a folder")	
+				print ("this is a folder")	
 				stats['st_mode']   = 16895
 				stats['size']      = 4096
                         stats['st_uid']    = self.__localUser.pw_uid
@@ -125,7 +125,7 @@ class DbxHandle :
                                 	req = self.__connect.files_list_folder_continue(cursor)
                         	more = req.has_more
                         	for entry in req.entries :
-                                	#print(entry.path_display)
+                                	print(entry.path_display)
 					print(self.getactualfilename(entry.path_display))
 					lst.append(self.getactualfilename(entry.path_display))
                                 	#lst.append(entry.path_display)
@@ -144,7 +144,7 @@ class DbxHandle :
 		try:
 			
 			req = self.__connect.files_create_folder(path, False)
-			#print ("dropbox mkdir folder %s" % path) 
+			print ("dropbox mkdir folder %s" % path) 
 			print(req)	
 			return True	
 		except Exception as ex:
@@ -155,7 +155,7 @@ class DbxHandle :
         def rmdir(self, path):
 		try:
 			req = self.__connect.files_delete(path)
-			#print("dropbox Path %s deleted" % path)
+			print("dropbox Path %s deleted" % path)
 		except Exception as ex:
 			print("dropbox Path %s not present" % path)
 			self.HandleException(ex)
@@ -164,9 +164,9 @@ class DbxHandle :
 
 	def copy(self, src, dest):
 		try:
-			#print ("DROPBOX FILE COPY")
+			print ("DROPBOX FILE COPY")
 			req = self.__connect.files_copy(src, dest, True, True, True)
-			#print("dropbox copied src %s to %s" , src, dest)
+			print("dropbox copied src %s to %s" , src, dest)
 		except Exception as ex:
 
 			self.HandleException(ex)
@@ -175,8 +175,8 @@ class DbxHandle :
 	def createFile(self, filename):
 		try:
 			#req = self.__connect.files_upload(0, filename, WriteMode('add'), False, None, None)
-			req = self.__connect.files_upload('', filename)  #, "mode":"add")
-			#print("dropbox created file %s" % filename)
+			req = self.__connect.files_upload('this is cs850', filename)  #, "mode":"add")
+			print("dropbox created file %s" % filename)
 		except Exception as ex:
 			print("dropbox unable to create file %s" % filename)
 			self.HandleException(ex)
@@ -184,10 +184,10 @@ class DbxHandle :
 
 	def rename(self, src, dest):
 		try:
-                        #print ("DROPBOX FILE MOVE ")
+                        print ("DROPBOX FILE MOVE ")
 
 			req = self.__connect.files_move(src, dest, True, True, True) #, False, False, False)
-			#print("Files moved from %s to %s" , src,  dest)	
+			print("Files moved from %s to %s" , src,  dest)	
 		except Exception as ex:
 			print("Dropbox invalid path provided %s to be moved" % src)
 			self.HandleException(ex)
@@ -211,11 +211,12 @@ if __name__ == '__main__':
 	d = DbxHandle(container[0])
 	d.readdir("")
 	d.createFile("/manoj.txt")
-	d.mkdir("/fusion")
-	d.copy("/manoj.txt", "/fusion/")	
+	d.rmdir("/fusion")
+	d.mkdirrec("/fusion", 777)
+	#d.copy("/manoj.txt", "/fusion/")	
 	#lst = d.get_file_names_to_move('/manoj1.txt', None)	
 	#print (lst)
-	d.move("/manoj.txt", "/manoj_drop")
+	d.rename("/manoj.txt", "/manoj_drop")
 	d.copy("/manoj_drop", "/fusion/manoj_text_copied")
 	d.copy("/manoj_drop","/manojcopieed")
 	d.copy("/manojcopieed", "/fusion-container/manoj_copy_text")

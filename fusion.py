@@ -31,6 +31,17 @@ class FusionFS :
 						self.__handleLists.append(sftphandle.SftpHandle(cont))
 					except :
 						pass
+                                elif cont[u'type'] == 'gdrive' :
+                                        try :
+                                                self.__handleLists.append(gdrivehandle.GoogleDriveHandle(cont))
+                                        except Exception as ex:
+                                                template = "Exception type {0} occurred. Arguments:\n{1!r}"
+                                                message  = template.format(type(ex).__name__, ex.args)
+                                                print (message)
+
+                with open('config.json', 'w') as outfile:
+                     json.dump(config, outfile, indent = 4,
+                               ensure_ascii = False)
 
 		if config[u'properties'][u'mirroring'] != 1 :
 			self.__mirrors = -1
@@ -42,7 +53,11 @@ class FusionFS :
 		print("[fusion] total containers online : %d" % (len(self.__handleLists)))
 
 
-
+	def gethandle(self, i):
+		if self.__handleLists[i].__class__.__name__ is not 'SftpHandle':
+			return None
+		return self.__handleLists[i] 
+		
 	def __getSites(self, num = -1, excpt = list() ) :
 		if num == -1 :
 			num = self.__mirrors
@@ -73,7 +88,9 @@ class FusionFS :
 
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue
 				try :
 					a = handle.chmod(path, mode)
 				except :
@@ -81,6 +98,8 @@ class FusionFS :
 		else :
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
+				if handle.__class__.__name__ is not 'SftpHandle':
+					continue
 				try :
 					handle.readdir(path)
 					sites.append(i)
@@ -130,7 +149,8 @@ class FusionFS :
 				handle = self.__handleLists[i] 
 				try :
 					a = handle.getattr(path)
-					lst.append(a)
+					if a != None:
+						lst.append(a)
 				except :
 					print("[fusion] getattr failed at handle %d" % (i))
 		else :
@@ -138,8 +158,9 @@ class FusionFS :
 			for i, handle in enumerate(self.__handleLists) :
 				try :
 					a = handle.getattr(path)
-					sites.append(i)
-					lst.append(a)
+					if a != None:
+						sites.append(i)
+						lst.append(a)
 				except :
 					print("[fusion] getattr failed at handle %d" % (i))
 			
@@ -156,7 +177,10 @@ class FusionFS :
 	def unlink(self, path) :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i] 
+				handle = self.gethandle(i) #self.__handleLists[i]
+                                if handle is None:
+                                        continue
+				 
 				try :
 					handle.unlink(path)
 				except :
@@ -165,6 +189,8 @@ class FusionFS :
 		else :	
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
+                                if handle.__class__.__name__ is not 'SftpHandle':
+                                        continue
 				try :
 					handle.unlink(path)
 					sites.append(i)
@@ -175,7 +201,9 @@ class FusionFS :
 	def rename(self, old, new) :
 		if old in self.__explorer.keys() :
 			for i in self.__explorer[old] :
-				handle = self.__handleLists[i] 
+				handle = self.gethandle(i) #self.__handleLists[i] 
+				if handle is None:
+					continue
 				try :
 					a = handle.rename(old, new)
 				except :
@@ -186,6 +214,8 @@ class FusionFS :
 		else :	
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
+                                if handle.__class__.__name__ is not 'SftpHandle':
+                                        continue
 				try :
 					a = handle.rename(old, new)
 					sites.append(i)
@@ -212,7 +242,9 @@ class FusionFS :
 					sites = self.__getSites(num=self.__mirrors, excpt=list())
 			
 			for i in sites :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+                                if handle is None:
+                                        continue			
 				try :
 					a = handle.mkdir(path, mode)
 					newsites.append(i)
@@ -231,7 +263,9 @@ class FusionFS :
 	def rmdir(self, path) :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i] 
+				handle = self.gethandle(i) #self.__handleLists[i]
+                                if handle is None:
+                                        continue 
 				try :
 					a = handle.rmdir(path)
 				except IOError as e:
@@ -243,6 +277,9 @@ class FusionFS :
 			del self.__explorer[path]
 		else :
 			for i, handle in enumerate(self.__handleLists) :
+                                if handle.__class__.__name__ is not 'SftpHandle':
+                                        continue
+	
 				try :
 					a = handle.rmdir(path)
 				except IOError as e:
@@ -255,7 +292,9 @@ class FusionFS :
 	def utimens(self, path, times) :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i] 
+				handle = self.gethandle(i) #self.__handleLists[i] 
+				if handle is None:
+					continue
 				try :
 					a = handle.utimens(path)
 				except : 
@@ -264,6 +303,8 @@ class FusionFS :
 		else :
 			sites = list()
 			for i, handle in enumerate(self.__handleLists) :
+				if handle.__class__.__name__ is not 'SftpHandle':
+					continue
 				try :
 					a = handle.rmdir(path)
 					sites.append(i)
@@ -279,7 +320,9 @@ class FusionFS :
 		# print flags
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue;
 				try :	
 					a = handle.open(path, flags)
 					return a
@@ -288,6 +331,8 @@ class FusionFS :
 					print("[fusion] open failed at handle %d" % (i))
 		else :
 			for i, handle in enumerate(self.__handleLists) :
+				if handle.__class__.__name__ is not 'SftpHandle':
+					continue
 				try :	
 					a = handle.open(path, flags)
 					return a
@@ -311,7 +356,9 @@ class FusionFS :
 				sites = self.__getSites(num=self.__mirrors, excpt=list())
 			
 			for i in sites :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue
 				try :
 					a = handle.create(path, mode)
 					newsites.append(i)
@@ -335,7 +382,9 @@ class FusionFS :
 	def read(self, path, length, offset) :
 		if path in self.__explorer.keys() :
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue
 				try :
 					a = handle.read(path, length, offset)
 					return a
@@ -344,6 +393,8 @@ class FusionFS :
 		else :
 
 			for i, handle in enumerate(self.__handleLists) :
+				if handle.__class__.__name__ is not 'SftpHandle':
+					continue
 				try :	
 					a = handle.read(path, length, offset)
 					return a
@@ -355,7 +406,9 @@ class FusionFS :
 		if path in self.__explorer.keys() :
 			a = list()
 			for i in self.__explorer[path] :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue;
 				try :
 					k = handle.write(path, buf, offset)
 					a.append(k)
@@ -371,7 +424,9 @@ class FusionFS :
 				sites = self.__getSites(num=self.__mirrors, excpt=list())
 			
 			for i in sites :
-				handle = self.__handleLists[i]
+				handle = self.gethandle(i) #self.__handleLists[i]
+				if handle is None:
+					continue;
 				try :	
 					a = handle.write(path, buf, offset)
 				except :

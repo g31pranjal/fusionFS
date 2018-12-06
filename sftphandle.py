@@ -31,7 +31,7 @@ class SftpHandle :
 			print("[sftphandle @ %s] marker not found." % (self.native[u'name']))
 			raise Exception
 
-		self.__localUser = pwd.getpwnam('in-arena')
+		self.__localUser = pwd.getpwnam('mk2sharm')
 		self.__log = logg(self.__connect, self.__abspath(self.native['version_dir']))
 		
 
